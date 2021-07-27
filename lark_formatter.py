@@ -126,6 +126,21 @@ class ReformatterContext:
             if tok.type not in ignore:
                 yield tok
 
+    def get_last_char(self) -> Optional[str]:
+        """The last character in the output."""
+        return (self.buffer.getvalue() or [None])[-1]
+
+    @property
+    def should_add_space(self):
+        """Should the next item add a space?"""
+        return self.get_last_char() not in " \t"
+
+    def append(self, text: str, add_space_if_needed: bool = True):
+        """Append text to the buffer."""
+        if add_space_if_needed and self.should_add_space:
+            print(" ", end="", file=self.buffer)
+        print(text, end="", file=self.buffer)
+
     def right_strip_output(self):
         # Well now that's inefficient
         self.buffer.seek(len(self.buffer.getvalue().rstrip()))
@@ -206,27 +221,27 @@ class ReformatterContext:
 
     def handle_LPAR(self, token: lark.Token):
         self.state.parentheses += 1
-        print("( ", end="", file=self.buffer)
+        self.append("( ")
 
     def handle_RPAR(self, token: lark.Token):
         self.state.parentheses -= 1
-        print(" )", end=" ", file=self.buffer)
+        self.append(") ")
 
     def handle_LBRACE(self, token: lark.Token):
         self.state.curly_braces += 1
-        print("{ ", end="", file=self.buffer)
+        self.append("{ ", add_space_if_needed=False)
 
     def handle_RBRACE(self, token: lark.Token):
         self.state.curly_braces -= 1
-        print(" }", end=" ", file=self.buffer)
+        self.append("} ", add_space_if_needed=False)
 
     def handle_LSQB(self, token: lark.Token):
         self.state.square_brackets += 1
-        print("[ ", end="", file=self.buffer)
+        self.append("[ ")
 
     def handle_RSQB(self, token: lark.Token):
         self.state.square_brackets -= 1
-        print(" ]", end=" ", file=self.buffer)
+        self.append("] ")
 
     def handle_OP(self, token: lark.Token):
         """Operator."""
@@ -312,6 +327,7 @@ class ReformatterContext:
             print(" " * self.state.rule_indent + "| ",
                   end="", file=self.buffer)
         else:
+            self.right_strip_output()
             print(" | ", end="", file=self.buffer)
 
     def handle_COMMENT(self, token: lark.Token):
